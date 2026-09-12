@@ -1,8 +1,21 @@
 # Copyright 2026 The Taisce Authors
 # SPDX-License-Identifier: Apache-2.0
 #
-# A release is a tag, packed and pushed by this workflow with a NuGet key scoped to these packages
-# and held only as a repository secret; each package carries a provenance attestation.
+# A release is a tag, packed and pushed by this workflow. No publishing key exists anywhere.
+#
+# The workflow proves who it is to nuget.org with a short-lived OIDC token GitHub signs for this
+# repository and this workflow file, and nuget.org exchanges that for an API key valid about an hour
+# and usable once. A stored key is the thing worth not having: it works from anywhere, for anybody
+# who reads it, for as long as it lives, and a package published under this name by somebody else is
+# indistinguishable from one published here — the people who find out first are the ones who
+# installed it. An hour-long key issued inside a run started by a tag on this repository removes the
+# part of that an attacker needs.
+#
+# The key is requested immediately before the push, because it expires.
+#
+# Each package also carries a build provenance attestation, which is the other half: the key says the
+# publisher was trusted at the moment of publication, the attestation says which run produced these
+# exact bytes.
 name: release
 on:
   push:
@@ -26,4 +39,13 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*.nupkg
-      - run: dotnet nuget push 'dist/*.nupkg' --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+
+      # Requested here rather than earlier: the key nuget.org issues lasts about an hour and is good
+      # for one exchange, so anything between this step and the push is time spent on a key that is
+      # already burning.
+      - name: Exchange this run's identity for a short-lived publishing key
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - run: dotnet nuget push 'dist/*.nupkg' --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
