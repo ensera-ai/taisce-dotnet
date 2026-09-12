@@ -15,7 +15,7 @@
     <RepositoryUrl>https://github.com/ensera-ai/taisce-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>agent-memory;memory;microsoft-agent-framework;agents;taisce</PackageTags>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <!-- The Agent Framework version every project here compiles against, in one place so the
          adapter and its tests cannot disagree about it. -->
     <MafVersion>1.20.0</MafVersion>
