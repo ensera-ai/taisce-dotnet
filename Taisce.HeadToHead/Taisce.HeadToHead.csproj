@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Taisce.HeadToHead</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- MAAI001: the framework marks parts of this surface evaluation-only in this version. -->
+    <NoWarn>$(NoWarn);MAAI001;SKEXP0020;MEVD9001</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Taisce.Client/Taisce.Client.csproj" />
+    <ProjectReference Include="../Taisce.AgentFramework/Taisce.AgentFramework.csproj" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="$(MafVersion)" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="$(ExtensionsAIVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+    <PackageReference Include="CommunityToolkit.VectorData.InMemory" Version="1.0.1" />
+  </ItemGroup>
+</Project>

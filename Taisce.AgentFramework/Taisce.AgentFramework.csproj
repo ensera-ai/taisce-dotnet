@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Taisce.AgentFramework</RootNamespace>
+    <PackageId>Taisce.AgentFramework</PackageId>
+    <Description>Microsoft Agent Framework adapter for Taisce: a context provider that injects governed memory as one untrusted user message and records the turn afterwards.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- MAAI001: the framework marks its compaction API as evaluation-only in this version; the version is pinned in Directory.Build.props and the seam is held by the conformance suite. -->
+    <NoWarn>$(NoWarn);MAAI001</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Taisce.Client/Taisce.Client.csproj" />
+    <PackageReference Include="Microsoft.Agents.AI.Abstractions" Version="$(MafVersion)" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="$(MafVersion)" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="$(ExtensionsAIVersion)" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(ExtensionsVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="$(ExtensionsVersion)" />
+  </ItemGroup>
+</Project>

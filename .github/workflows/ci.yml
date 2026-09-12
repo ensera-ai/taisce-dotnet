@@ -1,0 +1,23 @@
+# Copyright 2026 The Taisce Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Build and the deployment-free tests on every push and pull request. The conformance suite needs
+# a live deployment and the service's runner; it runs from scripts/conformance.sh against one, and
+# its output is the evidence an adapter release carries.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build --nologo
+      - run: dotnet test --nologo --no-build

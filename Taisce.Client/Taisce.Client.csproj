@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Taisce</RootNamespace>
+    <PackageId>Taisce.Client</PackageId>
+    <Description>Client for a Taisce memory deployment: the v1 contract, no agent framework.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <!-- No package references. The client is plumbing under the adapter and depends on the
+       standard library alone, so a caller who wants governed memory without an agent framework does
+       not acquire one by asking. -->
+</Project>
