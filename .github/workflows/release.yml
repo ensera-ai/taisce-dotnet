@@ -1,8 +1,10 @@
 # Copyright 2026 The Taisce Authors
 # SPDX-License-Identifier: Apache-2.0
 #
-# A release is a tag, packed and pushed by this workflow with a NuGet key scoped to these packages
-# and held only as a repository secret; each package carries a provenance attestation.
+# A release is a tag, packed and pushed by this workflow through NuGet trusted publishing: the
+# runner exchanges its short-lived OIDC token for an API key that lives one hour, so no key is
+# stored anywhere and none can be stolen from this repository. Each package carries a provenance
+# attestation.
 name: release
 on:
   push:
@@ -26,4 +28,8 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*.nupkg
-      - run: dotnet nuget push 'dist/*.nupkg' --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+      - uses: NuGet/login@v1
+        id: nuget
+        with:
+          user: hamza.althunibat
+      - run: dotnet nuget push 'dist/*.nupkg' --source https://api.nuget.org/v3/index.json --api-key ${{ steps.nuget.outputs.NUGET_API_KEY }} --skip-duplicate
