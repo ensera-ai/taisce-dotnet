@@ -1,0 +1,29 @@
+# Copyright 2026 The Taisce Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+# A release is a tag, packed and pushed by this workflow with a NuGet key scoped to these packages
+# and held only as a repository secret; each package carries a provenance attestation.
+name: release
+on:
+  push:
+    tags: ['v*.*.*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test Taisce.Tests --nologo
+      - run: dotnet pack Taisce.Client -c Release -o dist -p:PackageVersion=${GITHUB_REF_NAME#v} && dotnet pack Taisce.AgentFramework -c Release -o dist -p:PackageVersion=${GITHUB_REF_NAME#v}
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*.nupkg
+      - run: dotnet nuget push 'dist/*.nupkg' --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate

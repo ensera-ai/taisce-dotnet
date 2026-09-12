@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Taisce.AgentFramework/Taisce.AgentFramework.csproj" />
+  <Project Path="Taisce.Client/Taisce.Client.csproj" />
+  <Project Path="Taisce.Conformance/Taisce.Conformance.csproj" />
+  <Project Path="Taisce.HeadToHead/Taisce.HeadToHead.csproj" />
+  <Project Path="Taisce.Tests/Taisce.Tests.csproj" />
+</Solution>

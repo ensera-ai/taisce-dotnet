@@ -1,0 +1,27 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- A warning shipped in a library is a warning somebody else has to decide about, with less
+         context than we have. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- CS1591 is not a warning we ship: the wire fields are the v1 contract, documented once in the
+         service's generated contract document; a comment per field here would be a second copy. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <Authors>The Taisce Authors</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/ensera-ai/taisce-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>agent-memory;memory;microsoft-agent-framework;agents;taisce</PackageTags>
+    <Version>0.1.0</Version>
+    <!-- The Agent Framework version every project here compiles against, in one place so the
+         adapter and its tests cannot disagree about it. -->
+    <MafVersion>1.20.0</MafVersion>
+    <ExtensionsAIVersion>10.10.0</ExtensionsAIVersion>
+    <!-- The Microsoft.Extensions.* line the dependency-injection extension binds against. Pinned
+         here with the rest so a consumer's graph holds one version of it. -->
+    <ExtensionsVersion>10.0.11</ExtensionsVersion>
+  </PropertyGroup>
+</Project>

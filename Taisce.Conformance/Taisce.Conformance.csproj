@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Taisce.Conformance</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);MAAI001</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Taisce.AgentFramework/Taisce.AgentFramework.csproj" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="$(MafVersion)" />
+  </ItemGroup>
+</Project>
