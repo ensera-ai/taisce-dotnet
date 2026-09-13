@@ -5,6 +5,15 @@
 # runner exchanges its short-lived OIDC token for an API key that lives one hour, so no key is
 # stored anywhere and none can be stolen from this repository. Each package carries a provenance
 # attestation.
+#
+# The job runs in the `nuget` environment, which admits only `v*.*.*` tags and waits for a reviewer,
+# because a version pushed to nuget.org can be unlisted but never removed. The trusted-publishing
+# policy on nuget.org leaves its environment field empty, and an empty field does not restrict: the
+# token names this environment and the policy still matches. Naming the environment in the policy
+# as well would tie the two together, but it is not what makes this job safe.
+#
+# Actions are referenced by commit SHA: a tag can be moved by whoever controls the action's
+# repository, and a moved tag would run their code in the job that receives the publishing key.
 name: release
 on:
   push:
@@ -14,21 +23,22 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: nuget
     permissions:
       contents: read
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: '10.0.x'
       - run: dotnet test Taisce.Tests --nologo
       - run: dotnet pack Taisce.Client -c Release -o dist -p:PackageVersion=${GITHUB_REF_NAME#v} && dotnet pack Taisce.AgentFramework -c Release -o dist -p:PackageVersion=${GITHUB_REF_NAME#v}
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: dist/*.nupkg
-      - uses: NuGet/login@v1
+      - uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         id: nuget
         with:
           user: hamza.althunibat
