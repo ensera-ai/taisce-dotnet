@@ -7,10 +7,11 @@
 # attestation.
 #
 # The job runs in the `nuget` environment, which admits only `v*.*.*` tags and waits for a reviewer,
-# because a version pushed to nuget.org can be unlisted but never removed. The trusted-publishing
-# policy on nuget.org leaves its environment field empty, and an empty field does not restrict: the
-# token names this environment and the policy still matches. Naming the environment in the policy
-# as well would tie the two together, but it is not what makes this job safe.
+# because a version pushed to nuget.org can be unlisted but never removed. Running in an environment
+# adds an `environment` claim to the OIDC token. A trusted-publishing policy on nuget.org with an
+# empty Environment field is documented as unrestricted on that claim, so such a policy still
+# matches. A policy that names an environment must name `nuget`. If the token exchange is ever
+# refused, check that field first.
 #
 # Actions are referenced by commit SHA: a tag can be moved by whoever controls the action's
 # repository, and a moved tag would run their code in the job that receives the publishing key.
