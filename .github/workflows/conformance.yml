@@ -20,6 +20,12 @@ name: conformance
 on:
   push:
     branches: [main]
+  # And on a pull request that changes this file. A deployment per pull request is what the policy
+  # above declines to pay for on every change — but the one change where it is worth paying is this
+  # file itself, which otherwise first executes on main, where a mistake in it is a red build on the
+  # branch everything else is cut from.
+  pull_request:
+    paths: ['.github/workflows/conformance.yml']
   workflow_dispatch:
   # So a release workflow can require this run before it publishes.
   workflow_call:
