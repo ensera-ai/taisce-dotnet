@@ -29,7 +29,14 @@ var agent = new ChatClientAgent(chatClient, new ChatClientAgentOptions { AIConte
   the person's messages; this provider's response filter keeps the assistant's final text and drops
   tool calls, tool results and anything the provider itself injected.
 - **A retried store is one observation.** The idempotency key is derived from the subject, the run
-  and the turn.
+  and the turn, with each field written as a length-prefixed netstring (`taisce-turn-key/2`), so two
+  different turns can never share a key. **Upgrading to 0.2.0 changes every turn's key:** a turn
+  retried across the upgrade is stored twice, once, and every later retry is deduplicated again.
+- **The key is not sent in clear.** `TaisceClient` refuses a base URL that is not `https`, unless the
+  host is `localhost`, a `127.0.0.0/8` address or `::1`. There is no opt-in for plaintext to another
+  host.
+- **Erasure and export are on the client and nowhere a model reaches.** See
+  [Taisce.Client](Taisce.Client/README.md).
 - **Compaction is replacement, never a summary.** `TaisceCompactionStrategy` is the framework's own
   `CompactionStrategy`: when its `CompactionTrigger` fires, it asks the deployment for the subject's
   context and replaces every group before the person's message, except system groups, with one
@@ -72,8 +79,17 @@ stubbed model, one instruction per line in and one report per line out.
 TAISCE_TOKEN=… TAISCE_API=https://memory.example TAISCE_CASES=../taisce/conformance/cases.json scripts/conformance.sh
 ```
 
-Eight cases, eight passes. `Taisce.Tests` holds what needs no deployment: the response filter, the turn
-key, the memory and context message renderings, which messages are the turn's input, and the refusals.
+Twelve cases against service v0.5.1's suite. `Taisce.Tests` holds what needs no deployment: the response
+filter, the turn key (asserted against the vectors every adapter shares, `testdata/turn-keys.json`), the
+memory and context message renderings, which messages are the turn's input, and the refusals.
+
+`Taisce.LiveTests` holds the erasure and export properties and needs a deployment, a read-write key and a
+read-only key. It fails, and does not skip, when any of the three is missing; it is not part of a bare
+`dotnet test` of the solution (run `dotnet test Taisce.Tests`) and runs from the conformance workflow:
+
+```sh
+TAISCE_API=… TAISCE_TOKEN=<read_write> TAISCE_READER_TOKEN=<read_only> dotnet test Taisce.LiveTests
+```
 
 ## The head-to-head
 
@@ -90,7 +106,7 @@ TAISCE_API=http://127.0.0.1:8080 TAISCE_TOKEN=… dotnet run --project Taisce.He
 
 ## Versions
 
-Built against Microsoft Agent Framework 1.20.0 and Microsoft.Extensions.AI 10.10.0 on .NET 10. The
+Built against Microsoft Agent Framework 1.28.0 and Microsoft.Extensions.AI 10.11.0 on .NET 10. The
 context provider needs only the abstractions packages; the compaction strategy needs the framework
 package, whose compaction API is marked evaluation-only in this version (diagnostic MAAI001, suppressed
 in the adapter project because the version is pinned and the seam is held by the conformance suite).
