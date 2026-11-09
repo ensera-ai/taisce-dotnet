@@ -23,13 +23,48 @@ while (await reader.ReadLineAsync() is { } line)
         continue;
     }
     var instruction = JsonSerializer.Deserialize<Instruction>(line, json) ?? throw new InvalidOperationException("instruction did not parse");
-    var report = await RunTurnAsync(instruction);
+    // An action the driver does not know is an error and never a turn: running it as one would
+    // store an empty turn and let a suite pass on an instruction nobody understood.
+    var report = instruction.Action switch
+    {
+        null or "" => await RunTurnAsync(instruction),
+        "erase" => await EraseAsync(instruction),
+        var other => UnknownAction(other),
+    };
     Console.Out.WriteLine(JsonSerializer.Serialize(report, json));
     await Console.Out.FlushAsync();
 }
 
+static Report UnknownAction(string action)
+{
+    Console.Error.WriteLine($"unknown action '{action}'");
+    return new Report { Error = $"unknown action '{action}'" };
+}
+
+// Erases the subject through the adapter's own client, by subject, and reports the receipt it was
+// handed. A receipt that is not clean arrives as an exception carrying the receipt, which is the
+// behaviour under test: the driver reports both, so the suite can see the rows that were left.
+static async Task<Report> EraseAsync(Instruction instruction)
+{
+    using var client = new TaisceClient(instruction.Api, instruction.Token);
+    try
+    {
+        var receipt = await client.EraseSubjectAsync(instruction.DataSubjectId, "conformance");
+        return new Report { Erasure = new ErasureReport { Deleted = receipt.Deleted, Residual = receipt.Residual, Clean = receipt.Clean, Error = "" } };
+    }
+    catch (TaisceErasureNotCleanException ex)
+    {
+        return new Report { Erasure = new ErasureReport { Deleted = ex.Receipt.Deleted, Residual = ex.Receipt.Residual, Clean = ex.Receipt.Clean, Error = ex.Message } };
+    }
+    catch (Exception ex)
+    {
+        return new Report { Erasure = new ErasureReport { Error = ex.Message } };
+    }
+}
+
 static async Task<Report> RunTurnAsync(Instruction instruction)
 {
+    var turn = instruction.Turn ?? throw new InvalidOperationException("a turn instruction carries a turn");
     var recorder = new ObserveRecorder();
     var http = new HttpClient(recorder) { Timeout = TimeSpan.FromSeconds(10) };
     using var client = new TaisceClient(instruction.Api, instruction.Token, http);
@@ -46,8 +81,8 @@ static async Task<Report> RunTurnAsync(Instruction instruction)
             }
         },
     });
-    IChatClient model = new StubModel(instruction.Turn, report);
-    if (instruction.Turn.Compact)
+    IChatClient model = new StubModel(turn, report);
+    if (turn.Compact)
     {
         // The compaction seam, on the chat client builder: any history at all trips it here.
         var strategy = new TaisceCompactionStrategy(client, new TaisceCompactionOptions
@@ -60,17 +95,17 @@ static async Task<Report> RunTurnAsync(Instruction instruction)
     }
     var agent = new ChatClientAgent(model, new ChatClientAgentOptions { AIContextProviders = [provider] });
     var session = await agent.CreateSessionAsync();
-    if (instruction.Turn.History is { Count: > 0 } history)
+    if (turn.History is { Count: > 0 } history)
     {
         // The earlier turns the application kept, in the framework's own session history.
         session.SetInMemoryChatHistory(history.Select(m => new ChatMessage(new ChatRole(m.Role), m.Content)).ToList());
     }
     var input = new List<ChatMessage>();
-    foreach (var s in instruction.Turn.Synthetic ?? [])
+    foreach (var s in turn.Synthetic ?? [])
     {
         input.Add(new ChatMessage(new ChatRole(s.Role), s.Content));
     }
-    input.Add(new ChatMessage(ChatRole.User, instruction.Turn.User));
+    input.Add(new ChatMessage(ChatRole.User, turn.User));
     try
     {
         await agent.RunAsync(input, session);
@@ -137,10 +172,11 @@ sealed class StubModel(Turn turn, Report report) : IChatClient
 // The protocol's shapes, as conformance/README.md in the service repository defines them.
 sealed record Instruction(
     [property: JsonPropertyName("case")] string Case,
+    [property: JsonPropertyName("action")] string? Action,
     [property: JsonPropertyName("api")] string Api,
     [property: JsonPropertyName("token")] string Token,
     [property: JsonPropertyName("data_subject_id")] string DataSubjectId,
-    [property: JsonPropertyName("turn")] Turn Turn);
+    [property: JsonPropertyName("turn")] Turn? Turn);
 
 sealed record Turn(
     [property: JsonPropertyName("history")] List<SyntheticMessage>? History,
@@ -166,4 +202,14 @@ sealed class Report
     [JsonPropertyName("fatal")] public bool Fatal { get; set; }
     [JsonPropertyName("observed")] public bool Observed { get; set; }
     [JsonPropertyName("store_error")] public string? StoreError { get; set; }
+    [JsonPropertyName("error")] public string? Error { get; set; }
+    [JsonPropertyName("erasure")] public ErasureReport? Erasure { get; set; }
+}
+
+sealed class ErasureReport
+{
+    [JsonPropertyName("deleted")] public IReadOnlyDictionary<string, int>? Deleted { get; set; }
+    [JsonPropertyName("residual")] public IReadOnlyDictionary<string, int>? Residual { get; set; }
+    [JsonPropertyName("clean")] public bool? Clean { get; set; }
+    [JsonPropertyName("error")] public string Error { get; set; } = "";
 }

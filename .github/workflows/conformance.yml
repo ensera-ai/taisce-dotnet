@@ -111,6 +111,28 @@ jobs:
           TAISCE_CASES: ${{ github.workspace }}/.conformance/cases.json
         run: scripts/conformance.sh
 
+      # A read-only key from the same deployment, for the property the suite cannot hold: that a key
+      # which may not erase is refused, and one that may read is allowed. The recipe is the CLI's own,
+      # run through the stack's bootstrap image; the token is printed once, so it is read from there.
+      - name: The live tests, against the same deployment
+        working-directory: .conformance
+        env:
+          COMPOSE_PROJECT_NAME: taisce-conformance
+          TAISCE_PORT: '18080'
+          TAISCE_INFERENCE_API_KEY: conformance-forms-nothing
+          TAISCE_INFERENCE_ALLOWLIST: forms-nothing.invalid
+        run: |
+          set -euo pipefail
+          reader="$(docker compose run --rm --no-deps bootstrap credential issue live-reader --project default --read-only \
+            | awk '/token:/{sub(/.*token: /,""); print; exit}')"
+          if [ -z "$reader" ]; then
+            echo "no read-only token was issued" >&2
+            exit 1
+          fi
+          echo "::add-mask::$reader"
+          cd "$GITHUB_WORKSPACE"
+          TAISCE_READER_TOKEN="$reader" dotnet test Taisce.LiveTests --nologo
+
       - name: What the deployment did
         if: always()
         working-directory: .conformance

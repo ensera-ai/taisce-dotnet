@@ -108,7 +108,7 @@ public sealed record CitationRequest
 }
 
 /// <summary>A refusal from the deployment, carrying the contract's own code.</summary>
-public sealed class TaisceException : Exception
+public class TaisceException : Exception
 {
     public TaisceException(int status, string code, string message) : base($"{status} {code}: {message}")
     {
@@ -122,6 +122,57 @@ public sealed class TaisceException : Exception
     /// <summary>The refusal code from the contract's closed vocabulary; branch on this, not on the message.</summary>
     public string Code { get; }
 }
+
+/// <summary>
+/// The key was refused the operation: a read-only key asked to erase. The deployment's refusal is
+/// the boundary; this type only lets a caller tell it apart from a fault.
+/// </summary>
+public sealed class TaisceForbiddenException(string message) : TaisceException(403, "forbidden", message);
+
+/// <summary>An export larger than one response. The deployment does not page exports; erase or export in smaller scopes.</summary>
+public sealed class TaisceExportTooLargeException(string message) : TaisceException(422, "export_too_large", message);
+
+/// <summary>
+/// An erasure whose receipt is not clean: rows still match what was erased. Thrown rather than
+/// returned, because an application that never reads <c>Clean</c> would otherwise tell a person their
+/// data is gone while it is not. The whole receipt is here for whoever handles it.
+/// </summary>
+public sealed class TaisceErasureNotCleanException : TaisceException
+{
+    public TaisceErasureNotCleanException(ErasureReceipt receipt)
+        : base(200, "erasure_not_clean", "the erasure left rows that still match (residual: "
+            + string.Join(", ", receipt.Residual.Where(r => r.Value != 0).Select(r => $"{r.Key}={r.Value}")) + ")")
+    {
+        Receipt = receipt;
+    }
+
+    /// <summary>What the deployment reported, residual counts included.</summary>
+    public ErasureReceipt Receipt { get; }
+}
+
+/// <summary>
+/// What an erasure removed and what still matches afterwards. <see cref="Residual"/> is a count taken
+/// after the delete in the same transaction, so it is a measurement and not a claim.
+/// </summary>
+public sealed record ErasureReceipt(
+    [property: JsonPropertyName("request_id")] string RequestId,
+    [property: JsonPropertyName("scope")] string Scope,
+    [property: JsonPropertyName("data_subject_id")] string DataSubjectId,
+    [property: JsonPropertyName("source_observation_ids")] IReadOnlyList<string>? SourceObservationIds,
+    [property: JsonPropertyName("completed_at")] DateTimeOffset CompletedAt,
+    [property: JsonPropertyName("deleted")] IReadOnlyDictionary<string, int> Deleted,
+    [property: JsonPropertyName("residual")] IReadOnlyDictionary<string, int> Residual,
+    [property: JsonPropertyName("clean")] bool Clean);
+
+/// <summary>Everything held about one subject or set of sources, as raw rows per section.</summary>
+public sealed record ExportResult(
+    [property: JsonPropertyName("scope")] string Scope,
+    [property: JsonPropertyName("data_subject_id")] string DataSubjectId,
+    [property: JsonPropertyName("source_observation_ids")] IReadOnlyList<string>? SourceObservationIds,
+    // Raw rows: an export has to include a column a migration added without anybody remembering to
+    // add it to a typed shape here.
+    [property: JsonPropertyName("sections")] IReadOnlyDictionary<string, IReadOnlyList<JsonElement>> Sections,
+    [property: JsonPropertyName("rows")] IReadOnlyDictionary<string, int> Rows);
 
 /// <summary>A question asked of the stored words rather than of what was inferred from them.</summary>
 public sealed record PassageRequest

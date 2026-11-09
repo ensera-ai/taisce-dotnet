@@ -1,7 +1,5 @@
 // Copyright 2026 The Taisce Authors
 // SPDX-License-Identifier: Apache-2.0
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -208,22 +206,11 @@ public sealed class TaisceContextProvider : AIContextProvider
     }
 
     /// <summary>
-    /// A turn's key: a version-5 UUID over the subject, the run and the messages, so a retried store
-    /// is one observation and a different turn is another.
+    /// A turn's key, as <see cref="Taisce.TurnKey.Derive"/> defines it. Kept here so a caller of the
+    /// adapter has one place to look; the derivation itself lives in the client, once.
     /// </summary>
     public static string TurnKey(string? dataSubjectId, string? runId, IReadOnlyList<ObserveMessage> messages)
-    {
-        var builder = new StringBuilder().Append(dataSubjectId).Append('\n').Append(runId).Append('\n');
-        foreach (var m in messages)
-        {
-            builder.Append(m.Role).Append('\n').Append(m.Content).Append('\n');
-        }
-        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
-        var bytes = digest[..16];
-        bytes[6] = (byte)((bytes[6] & 0x0f) | 0x50);
-        bytes[8] = (byte)((bytes[8] & 0x3f) | 0x80);
-        return new Guid(bytes, bigEndian: true).ToString();
-    }
+        => Taisce.TurnKey.Derive(dataSubjectId, runId, messages);
 
     private static string? LastUserText(IEnumerable<ChatMessage>? messages)
     {

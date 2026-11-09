@@ -4,11 +4,17 @@
 # Build and the deployment-free tests on every push and pull request. The conformance suite needs
 # a live deployment and the service's runner; it runs from scripts/conformance.sh against one, and
 # its output is the evidence an adapter release carries.
+#
+# Also on a daily schedule: an advisory published against a dependency we already ship arrives
+# without a commit, so a check that ran only on pushes and pull requests would first see it the
+# next time somebody happened to change something.
 name: ci
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '17 5 * * *'
 permissions:
   contents: read
 jobs:
@@ -21,4 +27,20 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: dotnet build --nologo
-      - run: dotnet test --nologo --no-build
+      # Taisce.Tests alone: the live tests need a deployment and run from conformance.yml, where
+      # one exists. They are only compiled here, so they cannot rot between conformance runs.
+      - run: dotnet test Taisce.Tests --nologo --no-build
+      - run: dotnet build Taisce.LiveTests --nologo
+
+      # `dotnet list package --vulnerable` exits 0 whatever it finds, so the output is what is
+      # checked. Transitive packages are included: an advisory against something we only reach
+      # through the framework is still shipped to whoever installs this.
+      - name: No dependency has a known advisory
+        run: |
+          set -euo pipefail
+          out="$(dotnet list package --vulnerable --include-transitive 2>&1)"
+          echo "$out"
+          if echo "$out" | grep -qi 'has the following vulnerable packages'; then
+            echo "a package has a known advisory" >&2
+            exit 1
+          fi
